@@ -1,0 +1,11 @@
+[project]
+environment = dev-1
+
+[aws]
+region = eu-west-2
+
+[S3]
+bucket_name = ukristaging-terraform-state
+
+[logging]
+level = INFO
