@@ -5,6 +5,21 @@ import re
 import os
 from jinja2 import Environment, FileSystemLoader
 
+def configure_logging(logging_level):
+  logging.basicConfig(
+    filename='state_parser.log', 
+    filemode='w', 
+    level=logging_level)
+ 
+  console = logging.StreamHandler()
+  console.setLevel(logging.INFO)
+
+  formatter = logging.Formatter('%(name)-4s: %(levelname)-4s %(message)s')
+
+  console.setFormatter(formatter)
+  logging.getLogger('').addHandler(console)
+
+
 def parse_bucket_objects(bucket_name, search_string):
   """
   Returns a list of bucket objects that match a given string.
@@ -20,10 +35,8 @@ def parse_bucket_objects(bucket_name, search_string):
   regex_pattern = r"^" + re.escape(search_string)
 
   for bucket_object in bucket_name.objects.all():
-      if re.match(regex_pattern, bucket_object.key):
-        matching_objects.append(bucket_object.key)
-      else:
-        logging.info("Key doesn't match project: {}".format(bucket_object.key))
+    if re.match(regex_pattern, bucket_object.key):
+      matching_objects.append(bucket_object.key)
   
   return matching_objects
 
@@ -58,15 +71,13 @@ def generate_backend_file(bucket_name, state_file_list, aws_region, project_envi
 
     if not os.path.exists(output_dir):
       os.makedirs(output_dir)
-    # backend_file = template.render(
-    #   bucket_name=bucket_name, 
-    #   state_file=state_file,
-    #   region=aws_region)
 
     template.stream(
       bucket=bucket_name, 
       key=state_file,
       region=aws_region).dump(output_uri)
+    
+    logging.info("Generated file: '{}'".format(output_uri))
 
 
 def main():
@@ -74,26 +85,24 @@ def main():
   parser.read("config.txt")
 
   aws_region = parser.get("aws", "region")
-  project_environment = parser.get("project", "environment")
+  project_environments = parser.get("project", "environments")
   bucket_name = parser.get("S3", "bucket_name")
   logging_level = parser.get("logging", "level")
 
-  logging.basicConfig(
-    filename='state_parser.log', 
-    filemode='w', 
-    level=logging_level)
+  configure_logging(logging_level)
 
   s3 = boto3.resource('s3')
   state_bucket = s3.Bucket(bucket_name)
 
-  state_file_list = list()
-  state_file_list = parse_bucket_objects(state_bucket, project_environment)
+  for project in project_environments.split(','):
+    logging.info("Processing project: {}".format(project))
+    state_file_list = list(parse_bucket_objects(state_bucket, project))
 
-  generate_backend_file(
-    bucket_name, 
-    state_file_list, 
-    aws_region, 
-    project_environment)
+    generate_backend_file(
+      bucket_name, 
+      state_file_list, 
+      aws_region, 
+      project)
 
 
 if __name__ == "__main__":

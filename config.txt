@@ -1,5 +1,5 @@
 [project]
-environment = dev-1
+environments = dev-1,infradev-1,uat-1
 
 [aws]
 region = eu-west-2
