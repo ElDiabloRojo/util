@@ -1,5 +1,6 @@
 [project]
-environments = dev-1,infradev-1,uat-1
+# environments, comma separated list no quotes
+environments = dev-1,uat-1,infradev-1
 
 [aws]
 region = eu-west-2
